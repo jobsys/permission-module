@@ -2,6 +2,7 @@
     "name": "jobsys/permission-module",
     "description": "",
     "type": "laravel-module",
+    "license": "MIT",
     "authors": [
         {
             "name": "sinceow",
