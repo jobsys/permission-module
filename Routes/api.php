@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -11,7 +13,7 @@
 |
 */
 
-$route_prefix = config('module.Permission.route_prefix', '');
+$route_prefix = config('module.Permission.route_prefix', 'manager');
 $route_url_prefix = $route_prefix ? $route_prefix . '/' : '';
 $route_name_prefix = $route_prefix ? $route_prefix . '.' : '';
 
