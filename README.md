@@ -4,7 +4,7 @@
 ## 模块安装
 
 ```bash
-composer require jobsys/permission-module
+composer require jobsys/permission-module --dev
 ```
 
 
