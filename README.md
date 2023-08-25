@@ -4,20 +4,12 @@
 ## 模块安装
 
 ```bash
+# 安装依赖
 composer require jobsys/permission-module --dev
+
+# 启用模块
+php artisan module:enable Permission && php artisan module:publish-migration Permission && php artisan migrate
 ```
-
-
-### 依赖
-
-+ PHP 依赖
-
-   ```json5
-   {
-      "spatie/laravel-permission": "^5.9",            // 权限管理，必装模块，已经在 composer.json 中添加
-   }
-   ```
-+ JS 依赖 (无)
 
 ### 配置
 
