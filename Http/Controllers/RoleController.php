@@ -164,6 +164,18 @@ class RoleController extends BaseManagerController
                 if (!$permissions->contains($menu['page'])) {
                     unset($menus[$index]);
                 } else {
+
+                    $available_actions = $all_permissions[$menu['page']]['children'] ?? [];
+
+                    foreach ($available_actions as $action => $name) {
+                        if ($permissions->contains($action)) {
+                            $menu['children'][] = [
+                                'displayName' => $name,
+                                'key' => $action,
+                            ];
+                        }
+                    }
+
                     $menu['key'] = $menu['page'];
                 }
             }
