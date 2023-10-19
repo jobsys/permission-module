@@ -38,7 +38,7 @@ class PermissionService extends BaseService
         }
 
         $permissions = collect($permissions)->filter(function ($permission) {
-            return Str::startsWith($permission, 'page.') || Str::startsWith($permission, 'api.');
+            return Str::startsWith($permission, 'page.') || Str::startsWith($permission, 'api.') || Str::startsWith($permission, 'export.');
         });
 
         foreach ($permissions as $permission) {
