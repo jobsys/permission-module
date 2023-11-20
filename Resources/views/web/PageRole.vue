@@ -416,7 +416,7 @@ const scopeColumns = () => {
 						{
 							name: "删除",
 							props: {
-								icon: "DeleteOutlined",
+								icon: h(DeleteOutlined),
 								size: "small",
 								// auth: 'api.manager.permission.role.delete'
 							},
