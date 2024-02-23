@@ -16,10 +16,6 @@
             }
         }
     },
-    "require": {
-        "laravel/framework": "^10.0",
-        "spatie/laravel-permission": "^5.8"
-    },
     "autoload": {
         "psr-4": {
             "Modules\\Permission\\": ""
