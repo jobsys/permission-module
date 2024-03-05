@@ -45,18 +45,18 @@ class DataScopeSetup
             $department_ids = $user->departments()->pluck('id')->toArray();
             $department_nested = [];
 
-            foreach ($department_ids as $department_id) {
-                $nested_department_ids = land_get_nested_data(Department::getTableName(), $department_id);
-                $department_nested = array_merge($department_nested, $nested_department_ids);
-            }
-            session([
-                $scope_content_key => [
-                    'department_nested' => $department_nested,
-                    'departments' => $department_ids,
-                    'user_id' => $user->id
-                ]
-            ]);
-        }
+			foreach ($department_ids as $department_id) {
+				$nested_department_ids = Department::find($department_id)->descendantsWithSelf()->pluck('id')->toArray();
+				$department_nested = array_merge($department_nested, $nested_department_ids);
+			}
+			session([
+				$scope_content_key => [
+					'department_nested' => $department_nested,
+					'departments' => $department_ids,
+					'user_id' => $user->id
+				]
+			]);
+		}
 
         return $next($request);
     }

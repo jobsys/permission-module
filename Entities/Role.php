@@ -12,10 +12,10 @@ class Role extends \Spatie\Permission\Models\Role
     ];
 
     public $appends = [
-        'type'
+        'model_type'
     ];
 
-    public function getTypeAttribute(): string
+    public function getModelTypeAttribute(): string
     {
         return 'role';
     }
