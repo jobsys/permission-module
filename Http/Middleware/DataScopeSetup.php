@@ -4,12 +4,11 @@ namespace Modules\Permission\Http\Middleware;
 
 
 use App\Models\Department;
-use Modules\Permission\Entities\Role;
 use Modules\Permission\Enums\Scope;
 
 class DataScopeSetup
 {
-    public function handle($request, \Closure $next, $role_name)
+    public function handle($request, \Closure $next)
     {
         //这个 Key 用于记录用户的角色的数据范围
         $scope_key = 'data_scopes_cache';
@@ -21,15 +20,16 @@ class DataScopeSetup
 
         $existing_scopes = session($scope_key);
 
-        $is_super_admin = $request->user()->isSuperAdmin();
+		$user = $request->user();
+
+        $is_super_admin = $user->isSuperAdmin();
 
         if (!$existing_scopes) {
             if ($is_super_admin) {
                 session([$scope_key => ['default' => Scope::ALL->value]]);
             } else {
-                $role = Role::where('name', $role_name)->first();
-                $scope = $role->data_scopes()->first();
-                session([$scope_key => $scope ? $scope->scope : []]);
+                $scope = $request->user()->getDataScope();
+                session([$scope_key => $scope]);
             }
         }
 
@@ -40,13 +40,12 @@ class DataScopeSetup
         $existing_scopes_content = session($scope_content_key);
 
         if (!$existing_scopes_content) {
-            $user = $request->user();
             // 这里是获取用户的 department 信息
             $department_ids = $user->departments()->pluck('id')->toArray();
             $department_nested = [];
 
 			foreach ($department_ids as $department_id) {
-				$nested_department_ids = Department::find($department_id)->descendantsWithSelf()->pluck('id')->toArray();
+				$nested_department_ids = Department::ancestorsAndSelf($department_id)->pluck('id')->toArray();
 				$department_nested = array_merge($department_nested, $nested_department_ids);
 			}
 			session([

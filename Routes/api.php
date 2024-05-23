@@ -23,6 +23,8 @@ Route::prefix("{$route_url_prefix}permission")->name("api.{$route_name_prefix}pe
     Route::post('/role/delete', 'RoleController@delete')->name('role.delete');
     Route::get('/role/permission', 'RoleController@permissionItems')->name('role.permission.items');
     Route::post('/role/permission', 'RoleController@permissionEdit')->name('role.permission.edit');
+    Route::post('/role/permission/clear', 'RoleController@userPermissionClear')->name('user.permission.clear');
     Route::get('/role/data-scope', 'RoleController@dataScopeItems')->name('role.data-scope.items');
     Route::post('/role/data-scope', 'RoleController@dataScopeEdit')->name('role.data-scope.edit');
+    Route::post('/role/data-scope/clear', 'RoleController@userDataScopeClear')->name('user.data-scope.clear');
 });

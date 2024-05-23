@@ -2,11 +2,11 @@
 
 namespace Modules\Permission\Entities;
 
-use Modules\Permission\Traits\Scopeable;
+use Modules\Permission\Traits\HasDataScopes;
 
 class Role extends \Spatie\Permission\Models\Role
 {
-    use Scopeable;
+    use HasDataScopes;
     protected $casts = [
         'is_active' => 'boolean',
     ];
