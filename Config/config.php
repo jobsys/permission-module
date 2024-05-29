@@ -1,5 +1,6 @@
 <?php
 
 return [
-    'name' => 'Permission'
+    'name' => 'Permission',
+	"route_prefix" => "manager",
 ];

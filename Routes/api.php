@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-$route_prefix = config('module.Permission.route_prefix', 'manager');
+$route_prefix = config('permission.route_prefix', 'manager');
 $route_url_prefix = $route_prefix ? $route_prefix . '/' : '';
 $route_name_prefix = $route_prefix ? $route_prefix . '.' : '';
 

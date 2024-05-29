@@ -3,29 +3,29 @@
 		<a-tabs v-model:activeKey="state.activeTab">
 			<a-tab-pane
 				key="permission"
-				:tab="mode === 'role' ? '角色操作权限' : '自定义操作权限'"
+				:tab="mode === 'role' ? '角色操作权限' : '独立操作权限'"
 				v-if="auth('api.manager.permission.role.permission.items')"
 			>
 				<a-alert type="success" v-if="mode === 'role'" :message="`当前操作角色: ${info.display_name}`"></a-alert>
 				<a-alert type="info" show-icon class="my-4">
 					<template #message>
 						<div>1. 权限对应管理系统菜单项，如果某菜单下的功能全未被选中，则该菜单项对该角色/用户不可见</div>
-						<div>2. 如果用户有自定义权限，将以用户自定义权限为准</div>
+						<div>2. 如果用户有独立权限，将以用户独立权限为准</div>
 					</template>
 				</a-alert>
 				<template v-if="mode === 'user'">
 					<a-alert type="warning" show-icon class="my-4">
 						<template #message>
 							<div class="flex items-center justify-between">
-								<div>如果设置了用户权限，那角色权限将对该用户无效，权限以用户权限为准</div>
+								<div>如果设置了独立权限，那角色权限将对该用户无效，以独立权限为准</div>
 
-								<a-tooltip title="清除用户自定义权限后将以用户角色权限为准">
+								<a-tooltip title="清除用户独立权限后将以用户角色权限为准">
 									<NewbieButton
 										type="primary"
 										:icon="h(ClearOutlined)"
 										:fetcher="state.permissionClearFetcher"
 										@click="onClearCustomPermission"
-										>清除用户自定义权限</NewbieButton
+										>清除用户独立权限</NewbieButton
 									>
 								</a-tooltip>
 							</div>
@@ -61,21 +61,21 @@
 			</a-tab-pane>
 			<a-tab-pane
 				key="dataScope"
-				:tab="mode === 'role' ? '角色数据权限' : '自定义数据权限'"
+				:tab="mode === 'role' ? '角色数据权限' : '独立数据权限'"
 				v-if="auth('api.manager.permission.role.data-scope.items')"
 			>
 				<a-alert type="warning" show-icon v-if="mode === 'user'" class="my-4">
 					<template #message>
 						<div class="flex items-center justify-between">
-							<div>如果设置了用户数据权限，那角色数据权限将对该用户无效，数据权限以用户数据权限为准</div>
+							<div>如果设置了独立数据权限，角色数据权限将对该用户无效，数据权限以独立数据权限为准</div>
 
-							<a-tooltip title="清除用户自定义数据权限后将以用户角色权限为准">
+							<a-tooltip title="清除用户独立数据权限后将以用户角色权限为准">
 								<NewbieButton
 									type="primary"
 									:icon="h(ClearOutlined)"
 									:fetcher="state.dataScopeClearFetcher"
 									@click="onClearCustomDataScope"
-									>清除自定义数据权限</NewbieButton
+									>清除独立数据权限</NewbieButton
 								>
 							</a-tooltip>
 						</div>
@@ -336,7 +336,7 @@ const closeEditor = () => {
 
 const onClearCustomPermission = () => {
 	const modal = useModalConfirm(
-		`您确认要清除当前用户自定义权限吗？清除用户自定义权限后将以用户角色权限为准`,
+		`您确认要清除当前用户独立权限吗？清除用户独立权限后将以用户角色权限为准`,
 		async () => {
 			try {
 				const res = await useFetch(state.permissionClearFetcher).post(route("api.manager.permission.user.permission.clear"), {
@@ -357,7 +357,7 @@ const onClearCustomPermission = () => {
 
 const onClearCustomDataScope = () => {
 	const modal = useModalConfirm(
-		`您确认要清除当前用户自定义数据权限吗？清除用户自定义数据权限后将以用户角色数据权限为准`,
+		`您确认要清除当前用户独立数据权限吗？清除用户独立数据权限后将以用户角色数据权限为准`,
 		async () => {
 			try {
 				const res = await useFetch(state.permissionClearFetcher).post(route("api.manager.permission.user.data-scope.clear"), {
@@ -417,7 +417,7 @@ const onSubmitScope = async () => {
 	const scope = {}
 	state.scopes.selectedScopes.forEach((item) => {
 		if (item.value === -1) {
-			//自定义数据类型
+			//独立数据类型
 			scope[item.name] = item.custom
 		} else {
 			//非自定义该数数据类型为范围数值

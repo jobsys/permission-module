@@ -3,6 +3,7 @@
 
 namespace Modules\Permission\Http\Controllers;
 
+use App\Boot\BootPermission;
 use App\Http\Controllers\BaseManagerController;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -140,7 +141,7 @@ class RoleController extends BaseManagerController
 		$menus = land_config('menus');
 
 		//拿出所有的权限项
-		$all_permissions = config('module.Permission.permissions');
+		$all_permissions = BootPermission::permissions();
 
 
 		foreach ($menus as $index => &$menu) {
@@ -297,7 +298,7 @@ class RoleController extends BaseManagerController
 
 
 		//所有的数据
-		$total_resources = collect(config('module.Permission.data_scope.resources'));
+		$total_resources = collect(BootPermission::dataScopes()['resources']);
 
 		$existing_scope = [];
 

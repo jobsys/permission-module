@@ -2,6 +2,7 @@
 
 namespace Modules\Permission\Entities\Scope;
 
+use App\Boot\BootPermission;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
@@ -58,7 +59,7 @@ class AuthorisationScope implements Scope
 
 				$scope = session('data_scopes_cache');
 				$scope_content = session('data_scope_content_cache');
-				$resources = collect(config('module.Permission.data_scope.resources'));
+				$resources = collect(BootPermission::dataScopes()['resources']);
 
 				$model = $builder->getModel();
 
@@ -102,11 +103,11 @@ class AuthorisationScope implements Scope
 					$many_2_many = method_exists($model, 'departments');
 
 					$resource = $resources->where('type', 'model')->where('model', get_class($model))->first();
-					$department_id = config('module.Permission.data_scope.department_key', 'department_id');
+					$department_id = BootPermission::dataScopes()['department_key'] ?? 'department_id';
 					if ($resource && $resource['name'] === 'department') {
 						$department_id = 'id';
 					}
-					$creator_id = config('module.Permission.data_scope.creator_key', 'creator_id');
+					$creator_id = BootPermission::dataScopes()['creator_key'] ?? 'creator_id';
 
 					if (!$resource) {
 						$scope = $scope['default'];

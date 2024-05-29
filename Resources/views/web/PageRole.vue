@@ -146,7 +146,7 @@ const columns = () => {
 				}
 
 				actions.push({
-					name: "权限管理",
+					name: "角色权限",
 					props: {
 						icon: h(AuditOutlined),
 						size: "small",

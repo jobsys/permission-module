@@ -2,6 +2,7 @@
 
 namespace Modules\Permission\Services;
 
+use App\Boot\BootPermission;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
@@ -23,7 +24,7 @@ class PermissionService extends BaseService
 	{
 
 		//由于前端在未选中一个页面下所有权限时，该页面的权限不会被标记为选中，所以需要手动补全
-		$total_permissions = config('module.Permission.permissions');
+		$total_permissions = BootPermission::permissions();
 
 		$page_permission_map = [];
 
@@ -68,7 +69,7 @@ class PermissionService extends BaseService
 	{
 
 		//由于前端在未选中一个页面下所有权限时，该页面的权限不会被标记为选中，所以需要手动补全
-		$total_permissions = config('module.Permission.permissions');
+		$total_permissions = BootPermission::permissions();
 
 		$page_permission_map = [];
 

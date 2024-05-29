@@ -2,6 +2,7 @@
 
 namespace Modules\Permission\Console;
 
+use App\Boot\BootPermission;
 use Illuminate\Console\Command;
 use Modules\Permission\Entities\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -44,7 +45,7 @@ class SyncPermission extends Command
         $remaining_permissions = collect();
 
 
-        $predefined_permissions = config('module.Permission.permissions');
+        $predefined_permissions = BootPermission::permissions();
 
         foreach ($predefined_permissions as $permission => $menu) {
             if (is_array($menu)) {

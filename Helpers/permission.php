@@ -1,5 +1,6 @@
 <?php
 
+use App\Boot\BootPermission;
 use Illuminate\Support\Collection;
 
 if (!function_exists('permission_get_page_permissions')) {
@@ -13,7 +14,7 @@ if (!function_exists('permission_get_page_permissions')) {
     function permission_get_page_permissions(string $page, Collection $permissions): array
     {
 
-        $route_prefix = config('module.Permission.route_prefix', '');
+        $route_prefix = config('permission.route_prefix', '');
 
         $page_pieces = explode('.', $page);
         if ($page_pieces[1] !== $route_prefix) {
@@ -23,7 +24,7 @@ if (!function_exists('permission_get_page_permissions')) {
 
         $page = implode('.', $page_pieces);
 
-        $predefined_permissions = config('module.Permission.permissions')[$page]['children'] ?? [];
+        $predefined_permissions = BootPermission::permissions()[$page]['children'] ?? [];
 
         foreach ($predefined_permissions as $permission => $name) {
             if ($permissions->where('name', $permission)->count() === 0) {
