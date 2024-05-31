@@ -57,7 +57,11 @@ class AuthorisationScope implements Scope
 
 			function (Builder $builder) {
 
-				$scope = session('data_scopes_cache');
+                if(auth()->user()?->isSuperAdmin()){
+                    return $builder;
+                }
+
+                $scope = session('data_scopes_cache');
 				$scope_content = session('data_scope_content_cache');
 				$resources = collect(BootPermission::dataScopes()['resources']);
 
