@@ -6,7 +6,7 @@
 				:tab="mode === 'role' ? '角色操作权限' : '独立操作权限'"
 				v-if="auth('api.manager.permission.role.permission.items')"
 			>
-				<a-alert type="success" v-if="mode === 'role'" :message="`当前操作角色: ${info.display_name}`"></a-alert>
+				<a-alert type="success" v-if="mode === 'role'" :message="`当前操作角色: ${info.name}`"></a-alert>
 				<a-alert type="info" show-icon class="my-4">
 					<template #message>
 						<div>1. 权限对应管理系统菜单项，如果某菜单下的功能全未被选中，则该菜单项对该角色/用户不可见</div>
@@ -81,7 +81,7 @@
 						</div>
 					</template>
 				</a-alert>
-				<a-alert type="success" v-if="state.mode === 'role'" :message="`当前操作角色: ${info.display_name}`"></a-alert>
+				<a-alert type="success" v-if="state.mode === 'role'" :message="`当前操作角色: ${info.name}`"></a-alert>
 				<a-alert
 					v-if="mode === 'role'"
 					message="未设置数据范围的数据类型均按 【默认】的数据范围处理；在添加或者删除了数据类型后请记得保存"

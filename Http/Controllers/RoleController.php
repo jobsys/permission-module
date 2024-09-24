@@ -18,23 +18,22 @@ class RoleController extends BaseManagerController
 {
 	public function pageRole()
 	{
-		$super_role = config('conf.super_role', 'super-admin');
+		$super_role = config('conf.role_super');
 		return Inertia::render('PageRole@Permission', ['superRole' => $super_role]);
 	}
 
 	public function items(Request $request)
 	{
 		$items = Role::get()->sortBy(function (Role $role) {
-			return $role->name === config('conf.super_role', 'super-admin') ? 0 : 1;
+			return $role->name === config('conf.role_super') ? 0 : 1;
 		})->values();
-		log_access('查看角色列表');
 		return $this->json($items);
 	}
 
 	public function item(Request $request, $id)
 	{
 		$item = Role::where('id', $id)->first();
-		log_access('查看角色信息', $id);
+		log_access('查看角色信息', $item);
 		return $this->json($item, $item ? State::SUCCESS : State::FAIL);
 	}
 
@@ -42,9 +41,9 @@ class RoleController extends BaseManagerController
 	{
 
 		list($input, $error) = land_form_validate(
-			$request->only(['id', 'name', 'display_name', 'description', 'is_active']),
-			['name' => 'bail|required|string', 'display_name' => 'bail|required|string'],
-			['display_name' => '角色名称', 'name' => '角色标识'],
+			$request->only(['id', 'name', 'description', 'is_active']),
+			['name' => 'bail|required|string'],
+			['name' => '角色名称'],
 		);
 
 		if ($error) {
@@ -52,16 +51,10 @@ class RoleController extends BaseManagerController
 		}
 
 
-		$unique = land_is_model_unique($input, Role::class, 'displayName');
-
-		if (!$unique) {
-			return $this->message('同名角色已经存在');
-		}
-
 		$unique = land_is_model_unique($input, Role::class, 'name');
 
 		if (!$unique) {
-			return $this->message('同名角色标识已经存在');
+			return $this->message('同名角色已经存在');
 		}
 
 
@@ -71,7 +64,6 @@ class RoleController extends BaseManagerController
 			$role->initDataScope();
 		}
 
-		log_access(isset($input['id']) && $input['id'] ? '修改角色信息' : '添加角色信息', $role->id);
 
 		return $this->json($role);
 	}
@@ -89,8 +81,6 @@ class RoleController extends BaseManagerController
 			});
 			$role->delete();
 		}
-
-		log_access('删除角色信息', $id);
 
 		return $this->json();
 	}
@@ -118,7 +108,7 @@ class RoleController extends BaseManagerController
 
 
 		//最大权限集为当前登录用户的所有权限
-		if ($this->login_user->hasRole(config('conf.super_role', 'super-admin'))) {
+		if ($this->login_user->hasRole(config('conf.role_super'))) {
 			$permissions = Permission::orderBy('sort_order', 'DESC')->get()->pluck('name');
 		} else {
 			//如果有自定义权限，那么就按照自定义权限来
@@ -226,7 +216,7 @@ class RoleController extends BaseManagerController
 			return true;
 		})->toArray());
 
-		log_access('获取角色权限信息', $id);
+		log_access('获取角色/用户权限信息', $role ?? $user);
 
 		return $this->json(compact('menus', 'auth_permissions'));
 	}
@@ -265,10 +255,10 @@ class RoleController extends BaseManagerController
 
 		if ($mode === 'role' && isset($role)) {
 			list($result, $error) = $service->syncRolePermissions($role, $input['permissions']);
-			log_access('编辑角色权限信息', $role->id);
+			log_access('编辑角色权限信息', $role);
 		} else if ($mode === 'user' && isset($user)) {
 			list($result, $error) = $service->syncUserPermissions($user, $input['permissions']);
-			log_access('编辑权限信息', $user->id);
+			log_access('编辑权限信息', $user);
 		}
 
 
@@ -312,7 +302,7 @@ class RoleController extends BaseManagerController
 
 
 		//以当前角色的数据权限为上限准备可选项
-		if ($this->login_user->hasRole(config('conf.super_role', 'super-admin'))) {
+		if ($this->login_user->hasRole(config('conf.role_super'))) {
 			$scopes = $total_resources->map(function ($item) use ($service) {
 				$item['options'] = $service->getScopeOptionsViaConfig($item, Scope::ALL->value);
 				return $item;
@@ -343,7 +333,7 @@ class RoleController extends BaseManagerController
 			];
 		}
 
-		log_access('获取角色数据权限', $id);
+		log_access('获取角色/用户数据权限', $role ?? $user);
 
 		return $this->json(compact('scopes', 'role_scopes'));
 	}
@@ -388,7 +378,7 @@ class RoleController extends BaseManagerController
 			} else {
 				$role->dataScopes()->update(['scope' => $input['scope']]);
 			}
-			log_access('编辑角色数据权限', $role->id);
+			log_access('编辑角色数据权限', $role);
 		} else if ($mode === 'user') {
 			$user = User::find($input['id']);
 
@@ -400,7 +390,7 @@ class RoleController extends BaseManagerController
 			} else {
 				$user->dataScopes()->update(['scope' => $input['scope']]);
 			}
-			log_access('编辑用户数据权限', $user->id);
+			log_access('编辑用户数据权限', $user);
 		}
 
 		return $this->json();
@@ -418,6 +408,8 @@ class RoleController extends BaseManagerController
 
 		$user->permissions()->detach();
 
+		log_access('清空用户操作权限', $user);
+
 		return $this->json();
 	}
 
@@ -432,6 +424,8 @@ class RoleController extends BaseManagerController
 		}
 
 		$user->dataScopes()->delete();
+
+		log_access('清空用户数据权限', $user);
 
 		return $this->json();
 	}

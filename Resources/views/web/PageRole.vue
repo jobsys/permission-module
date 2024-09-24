@@ -37,10 +37,7 @@ import { h, inject, nextTick, reactive, ref } from "vue"
 import PermissionAuthorization from "@modules/Permission/Resources/views/web/components/PermissionAuthorization.vue"
 
 const props = defineProps({
-	superRole: {
-		type: String,
-		default: "super-admin",
-	},
+	superRole: { type: String, default: "" },
 })
 
 const list = ref()
@@ -95,11 +92,6 @@ const columns = () => {
 		{
 			title: "角色名称",
 			width: 200,
-			dataIndex: "display_name",
-		},
-		{
-			title: "角色标识",
-			width: 200,
 			dataIndex: "name",
 		},
 		{
@@ -132,7 +124,7 @@ const columns = () => {
 
 				const actions = []
 
-				if (auth("api.manager.permission.role.edit")) {
+				if (auth("api.manager.permission.role.edit") && !record.is_inherent) {
 					actions.push({
 						name: "编辑",
 						props: {
@@ -159,7 +151,7 @@ const columns = () => {
 					},
 				})
 
-				if (auth("api.manager.permission.role.delete")) {
+				if (auth("api.manager.permission.role.delete") && !record.is_inherent) {
 					actions.push({
 						name: "删除",
 						props: {
@@ -181,15 +173,9 @@ const columns = () => {
 const getForm = () => {
 	return [
 		{
-			key: "display_name",
+			key: "name",
 			title: "角色名称",
 			tips: "必需唯一",
-			required: true,
-		},
-		{
-			key: "name",
-			title: "角色标识",
-			help: "必需唯一，用于系统区分，推荐使用字母，数字，中划线组合",
 			required: true,
 		},
 		{

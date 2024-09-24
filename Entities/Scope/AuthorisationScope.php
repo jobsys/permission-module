@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
 use Illuminate\Support\Facades\DB;
 use Modules\Permission\Enums\Scope as ScopeEnum;
-use Modules\Permission\Interfaces\CustomAuthorisation;
+use Modules\Permission\Interfaces\WithAuthorisationRule;
+use Modules\Permission\Interfaces\WithCustomizeAuthorisation;
 
 
 class AuthorisationScope implements Scope
@@ -57,19 +58,22 @@ class AuthorisationScope implements Scope
 
 			function (Builder $builder) {
 
-                if(auth()->user()?->isSuperAdmin()){
-                    return $builder;
-                }
+				if (auth()->user()?->isSuperAdmin()) {
+					return $builder;
+				}
 
-                $scope = session('data_scopes_cache');
+				$scope = session('data_scopes_cache');
 				$scope_content = session('data_scope_content_cache');
 				$resources = collect(BootPermission::dataScopes()['resources']);
 
 				$model = $builder->getModel();
 
-				if ($model instanceof CustomAuthorisation) {
+				//完全自定义权重最高
+				if ($model instanceof WithCustomizeAuthorisation) {
+					return $model->getCustomAuthorisationRule($builder);
+				} else if ($model instanceof WithAuthorisationRule) {
 					//规则管理
-					$authorise_rule = $model->onCustomAuthorisationRule();
+					$authorise_rule = $model->getAuthorisationRule();
 					$rule_name = $authorise_rule[0] ?? '';
 					$rule_conditions = $authorise_rule[1] ?? [];
 					if (!$rule_name) {

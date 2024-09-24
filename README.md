@@ -143,18 +143,8 @@ php artisan permission:sync
         ['displayName' => '委托单位数据', 'name' => 'client', 'model' => \App\Models\Client::class],
    ]
     ```
-4. 在 `Controller` 的构造函数中添加中间件
 
-   ```php
-   // App\Http\Kernel.php `$middlewareAliases` 中添加中间件别名
-   'dataScope.setup' => \Modules\Permission\Http\Middleware\DataScopeSetup::class,
-   ```
-
-   ```php
-   $this->middleware('dataScope.setup:' . 'the_role_key');
-   ```
-
-5. 在逻辑中使用控制器中使用 `authorise()` Scope 进行数据权限控制。
+4. 在逻辑中使用控制器中使用 `authorise()` Scope 进行数据权限控制。
 
    ```php
     public function items(Request $request)
