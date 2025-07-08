@@ -3,8 +3,8 @@
 namespace Modules\Permission\Providers;
 
 use Illuminate\Auth\Events\Login;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Factory;
+use Illuminate\Support\ServiceProvider;
 use Modules\Permission\Listeners\UserLoginListener;
 
 class PermissionServiceProvider extends ServiceProvider

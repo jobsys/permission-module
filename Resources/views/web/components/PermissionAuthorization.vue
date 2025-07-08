@@ -1,5 +1,5 @@
 <template>
-	<a-modal v-model:open="state.showAuthorizationModal" :destroy-on-close="true" :width="840" :footer="null" title="权限管理">
+	<a-modal v-model:open="state.showAuthorizationModal" :destroy-on-close="true" :width="840" :footer="null" :title="props.title">
 		<a-tabs v-model:activeKey="state.activeTab">
 			<a-tab-pane
 				key="permission"
@@ -7,14 +7,14 @@
 				v-if="auth('api.manager.permission.role.permission.items')"
 			>
 				<a-alert type="success" v-if="mode === 'role'" :message="`当前操作角色: ${info.name}`"></a-alert>
-				<a-alert type="info" show-icon class="my-4">
+				<a-alert type="info" show-icon class="my-4!">
 					<template #message>
 						<div>1. 权限对应管理系统菜单项，如果某菜单下的功能全未被选中，则该菜单项对该角色/用户不可见</div>
 						<div>2. 如果用户有独立权限，将以用户独立权限为准</div>
 					</template>
 				</a-alert>
 				<template v-if="mode === 'user'">
-					<a-alert type="warning" show-icon class="my-4">
+					<a-alert type="warning" show-icon class="my-4!">
 						<template #message>
 							<div class="flex items-center justify-between">
 								<div>如果设置了独立权限，那角色权限将对该用户无效，以独立权限为准</div>
@@ -25,8 +25,8 @@
 										:icon="h(ClearOutlined)"
 										:fetcher="state.permissionClearFetcher"
 										@click="onClearCustomPermission"
-										>清除用户独立权限</NewbieButton
-									>
+										>清除用户独立权限
+									</NewbieButton>
 								</a-tooltip>
 							</div>
 						</template>
@@ -75,8 +75,8 @@
 									:icon="h(ClearOutlined)"
 									:fetcher="state.dataScopeClearFetcher"
 									@click="onClearCustomDataScope"
-									>清除独立数据权限</NewbieButton
-								>
+									>清除独立数据权限
+								</NewbieButton>
 							</a-tooltip>
 						</div>
 					</template>
@@ -141,7 +141,7 @@
 		@ok="onAddScope"
 		title="数据权限定义"
 		@cancel="() => (state.isModifyCustom = false)"
-		:width="700"
+		:width="1000"
 	>
 		<a-form class="mt-6">
 			<a-form-item label="数据类型" required>
@@ -171,7 +171,7 @@
 			</a-form-item>
 
 			<a-form-item label="自定义数据" v-if="state.scopeAddForm.value === -1" help="对于未选择数据范围的数据类型不作限制">
-				<a-table :columns="customColumns()" :data-source="state.customOptions" size="middle" :pagination="false" :scroll="{ y: 300 }">
+				<a-table :columns="customColumns()" :data-source="state.customOptions" size="middle" :pagination="false" :scroll="{ y: 400 }">
 					<template #bodyCell="{ column, record }">
 						<template v-if="column.dataIndex === 'label'">
 							<span>{{ record.label }}</span>
@@ -179,15 +179,45 @@
 
 						<template v-if="column.dataIndex === 'scope'">
 							<a-select
+								v-if="record.type === 'select'"
 								:placeholder="`请选择${record.label}`"
 								key="scope"
 								mode="multiple"
 								allow-clear
-								show-search
+								filter-option
+								option-filter-prop="label"
 								v-model:value="state.scopeAddForm.custom[record.field]"
 								:options="record.propOptions"
-								style="width: 200px"
+								style="width: 100%"
 							></a-select>
+
+							<a-tree-select
+								v-if="record.type === 'tree'"
+								v-model:value="state.scopeAddForm.custom[record.field]"
+								style="width: 100%"
+								:tree-data="record.propOptions"
+								tree-checkable
+								allow-clear
+								:placeholder="`请选择${record.label}`"
+								tree-node-filter-prop="label"
+							/>
+
+							<a-select
+								v-if="record.type === 'remote'"
+								v-model:value="state.scopeAddForm.custom[record.field]"
+								mode="multiple"
+								label-in-value
+								:placeholder="`输入检索${record.label}`"
+								style="width: 100%"
+								:filter-option="false"
+								:not-found-content="state.remoteFetcher.loading ? undefined : null"
+								:options="record.propOptions"
+								@search="(value) => onRemoteFetchScopeOptions(value, record)"
+							>
+								<template v-if="state.remoteFetcher.loading" #notFoundContent>
+									<a-spin size="small" />
+								</template>
+							</a-select>
 						</template>
 					</template>
 				</a-table>
@@ -201,9 +231,10 @@ import { ClearOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-
 import { useFetch, useModalConfirm, useProcessStatusSuccess } from "jobsys-newbie/hooks"
 import { message } from "ant-design-vue"
 import { useTableActions } from "jobsys-newbie"
-import { find, isArray, map, sortBy } from "lodash-es"
+import { debounce, find, isArray, map, sortBy } from "lodash-es"
 
 const props = defineProps({
+	title: { type: String, default: "权限管理" },
 	mode: { type: String, default: "role" },
 	info: {
 		type: Object,
@@ -242,6 +273,8 @@ const state = reactive({
 	showAddScopeModal: false,
 	scopeFetcher: {},
 	scopeSubmitter: {},
+
+	remoteFetcher: {},
 })
 
 //过滤出未被选中的数据类型
@@ -251,9 +284,7 @@ const remainDataScopes = computed(() => {
 		return [find(state.scopes.selectedScopes, { name: state.scopeAddForm.name })]
 	}
 
-	return state.scopes.totalScopes.filter((scope) => {
-		return find(state.scopes.selectedScopes, { name: scope.name }) === undefined
-	})
+	return state.scopes.totalScopes.filter((scope) => find(state.scopes.selectedScopes, { name: scope.name }) === undefined)
 })
 
 //从未被选中的数据类型中获取选项
@@ -307,6 +338,26 @@ const fetchScopes = async (id) => {
 		)
 	})
 }
+
+const onRemoteFetchScopeOptions = debounce((value, config) => {
+	const { remoteOptions } = config
+
+	const { url, keyword } = remoteOptions
+
+	useFetch(state.remoteFetcher)
+		.get(url, {
+			params: {
+				[keyword]: value,
+			},
+		})
+		.then((res) => {
+			const data = res.result.data || res.result
+			config.propOptions = data.map((item) => ({
+				label: item.name,
+				value: item.id,
+			}))
+		})
+}, 500)
 
 const open = () => {
 	state.activeTab = "permission"
@@ -397,7 +448,11 @@ const onAddScope = () => {
 		})
 		state.isModifyCustom = false
 	} else {
-		state.scopes.selectedScopes.push({ ...scope, value: state.scopeAddForm.value, custom: state.scopeAddForm.custom })
+		state.scopes.selectedScopes.push({
+			...scope,
+			value: state.scopeAddForm.value,
+			custom: state.scopeAddForm.custom,
+		})
 	}
 
 	state.scopeAddForm = { name: "", value: "", custom: {} }
@@ -471,72 +526,67 @@ const onDeleteScope = (index) => {
 	state.scopes.selectedScopes.splice(index, 1)
 }
 
-const customColumns = () => {
-	return [
-		{
-			title: "自定义数据类型",
-			dataIndex: "label",
-			width: 200,
-		},
-		{
-			title: "自定义数据范围",
-			dataIndex: "scope",
-			width: 300,
-		},
-	]
-}
+const customColumns = () => [
+	{
+		title: "自定义数据类型",
+		dataIndex: "label",
+		width: 130,
+	},
+	{
+		title: "自定义数据范围",
+		dataIndex: "scope",
+	},
+]
 
-const scopeColumns = () => {
-	return [
-		{
-			title: "数据类型",
-			dataIndex: "name",
-			width: 200,
-		},
-		{
-			title: "数据范围",
-			dataIndex: "scope",
-			width: 200,
-		},
-		{
-			title: "操作",
-			width: 160,
-			key: "operation",
-			fixed: "right",
-			customRender({ record, index }) {
-				if ((props.mode === "role" && record.name !== "default") || props.mode === "user") {
-					const actions = [
-						{
-							name: "删除",
-							props: {
-								icon: h(DeleteOutlined),
-								size: "small",
-								// auth: 'api.manager.permission.role.delete'
-							},
-							action() {
-								onDeleteScope(index)
-							},
+const scopeColumns = () => [
+	{
+		title: "数据类型",
+		dataIndex: "name",
+		width: 200,
+	},
+	{
+		title: "数据范围",
+		dataIndex: "scope",
+		width: 200,
+	},
+	{
+		title: "操作",
+		width: 160,
+		key: "operation",
+		fixed: "right",
+		customRender({ record, index }) {
+			if ((props.mode === "role" && record.name !== "default") || props.mode === "user") {
+				const actions = [
+					{
+						name: "删除",
+						props: {
+							icon: h(DeleteOutlined),
+							size: "small",
+							// auth: 'api.manager.permission.role.delete'
 						},
-					]
+						action() {
+							onDeleteScope(index)
+						},
+					},
+				]
 
-					if (record.value === -1) {
-						actions.push({
-							name: "编辑范围",
-							props: {
-								icon: h(EditOutlined),
-								size: "small",
-							},
-							action() {
-								onEditCustomScope(record)
-							},
-						})
-					}
-
-					return useTableActions(actions)
+				if (record.value === -1) {
+					actions.push({
+						name: "编辑范围",
+						props: {
+							icon: h(EditOutlined),
+							size: "small",
+						},
+						action() {
+							onEditCustomScope(record)
+						},
+					})
 				}
-				return null
-			},
+
+				return useTableActions(actions)
+			}
+			return null
 		},
-	]
-}
+	},
+]
 </script>

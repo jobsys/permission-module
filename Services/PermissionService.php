@@ -15,6 +15,59 @@ use Spatie\Permission\PermissionRegistrar;
 class PermissionService extends BaseService
 {
 	/**
+	 * 找出页面下的所有 Action，由于页面是多套嵌套的，所以需要递归查找
+	 * @param array $permissions
+	 * @param string $page_key
+	 * @return array|null
+	 */
+	public function findPageActions(array $permissions, string $page_key): ?array
+	{
+		foreach ($permissions as $key => $value) {
+			if ($key === $page_key) {
+				return $value['children'] ?? null;
+			}
+
+			if (is_array($value) && isset($value['children'])) {
+				$found = $this->findPageActions($value['children'], $page_key);
+				if (!is_null($found)) {
+					return $found;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * 找出权限的路径
+	 * @param array $permissions
+	 * @param string $target_key
+	 * @param array $path
+	 * @return array|null
+	 */
+	function findPermissionPath(array $permissions, string $target_key, array $path = []): ?array
+	{
+		foreach ($permissions as $key => $value) {
+			$current_path = [...$path, $key];
+
+			// 直接命中目标
+			if ($key === $target_key) {
+				return $current_path;
+			}
+
+			// 有子权限，递归查找
+			if (is_array($value) && isset($value['children'])) {
+				$found = $this->findPermissionPath($value['children'], $target_key, $current_path);
+				if (!is_null($found)) {
+					return $found;
+				}
+			}
+		}
+
+		return null; // 未找到
+	}
+
+
+	/**
 	 * 同步角色权限
 	 * @param Role $role
 	 * @param array $permissions
@@ -23,37 +76,27 @@ class PermissionService extends BaseService
 	public function syncRolePermissions(Role $role, array $permissions): array
 	{
 
-		//由于前端在未选中一个页面下所有权限时，该页面的权限不会被标记为选中，所以需要手动补全
-		$total_permissions = BootPermission::permissions();
-
-		$page_permission_map = [];
-
-		foreach ($total_permissions as $permission => $child) {
-			if (!is_array($child)) {
-				continue;
-			}
-
-			if (isset($child['children']) && is_array($child['children'])) {
-				foreach ($child['children'] as $action => $name) {
-					$page_permission_map[$action] = $permission;
-				}
-			}
-		}
-
+		// 过滤出以 'page.' 或 'api.' 或 'export.' 或 'print.' 开头的权限
 		$permissions = collect($permissions)->filter(function ($permission) {
 			return Str::startsWith($permission, 'page.') || Str::startsWith($permission, 'api.') || Str::startsWith($permission, 'export.')
 				|| Str::startsWith($permission, 'print.');
 		});
 
+		//由于前端在未选中一个页面下所有权限时，该页面的权限不会被标记为选中，所以需要手动补全
+		//不需要了，在需要返回用户全部权限的时候再补全，这样前端的树形结构就会自动选中
+		$total_permissions = BootPermission::permissions();
+
+		$role_permissions = collect();
+
 		foreach ($permissions as $permission) {
-			if (isset($page_permission_map[$permission])) {
-				if (!$permissions->contains($page_permission_map[$permission])) {
-					$permissions->push($page_permission_map[$permission]);
-				}
+			$permission_path = $this->findPermissionPath($total_permissions, $permission);
+			if ($permission_path) {
+				$role_permissions = $role_permissions->concat($permission_path);
 			}
 		}
 
-		$role->syncPermissions($permissions->toArray());
+		$role->syncPermissions($role_permissions->unique()->toArray());
+
 
 		return [true, null];
 	}
@@ -68,37 +111,26 @@ class PermissionService extends BaseService
 	public function syncUserPermissions(User $user, array $permissions): array
 	{
 
-		//由于前端在未选中一个页面下所有权限时，该页面的权限不会被标记为选中，所以需要手动补全
-		$total_permissions = BootPermission::permissions();
-
-		$page_permission_map = [];
-
-		foreach ($total_permissions as $permission => $child) {
-			if (!is_array($child)) {
-				continue;
-			}
-
-			if (isset($child['children']) && is_array($child['children'])) {
-				foreach ($child['children'] as $action => $name) {
-					$page_permission_map[$action] = $permission;
-				}
-			}
-		}
-
+		// 过滤出以 'page.' 或 'api.' 或 'export.' 或 'print.' 开头的权限
 		$permissions = collect($permissions)->filter(function ($permission) {
 			return Str::startsWith($permission, 'page.') || Str::startsWith($permission, 'api.') || Str::startsWith($permission, 'export.')
 				|| Str::startsWith($permission, 'print.');
 		});
 
+
+		//由于前端在未选中一个页面下所有权限时，该页面的权限不会被标记为选中，所以需要手动补全
+		$total_permissions = BootPermission::permissions();
+
+		$user_permissions = collect();
+
 		foreach ($permissions as $permission) {
-			if (isset($page_permission_map[$permission])) {
-				if (!$permissions->contains($page_permission_map[$permission])) {
-					$permissions->push($page_permission_map[$permission]);
-				}
+			$permission_path = $this->findPermissionPath($total_permissions, $permission);
+			if ($permission_path) {
+				$user_permissions = $user_permissions->concat($permission_path);
 			}
 		}
+		$user->syncPermissions($user_permissions->unique()->toArray());
 
-		$user->syncPermissions($permissions->toArray());
 
 		return [true, null];
 	}
@@ -133,10 +165,10 @@ class PermissionService extends BaseService
 
 		//如果有自定义权限，优先使用自定义权限
 		if ($user->permissions()->count()) {
-			return $user->permissions()->pluck('name')->toArray();
+			return $user->permissions()->pluck('name')->values()->toArray();
 		}
 		//否则使用角色权限
-		return $user->getAllPermissions()->pluck('name')->toArray();
+		return $user->getAllPermissions()->pluck('name')->values()->toArray();
 	}
 
 	/**
@@ -227,19 +259,14 @@ class PermissionService extends BaseService
 			//自定义选项
 			if (isset($scope_config['customOptions'])) {
 
-				$conditions = [];
-
 				foreach ($scope_config['customOptions'] as $option_config) {
-					$prop_options = isset($option_config['options']) ? $option_config['options']($conditions) : [];
-					//再将这次的条件加入到下一个查询的条件中
-
 					$option['customOptions'][] = [
 						"label" => $option_config['displayName'],
+						"type" => $option_config['type'] ?? 'select',
 						"field" => $option_config['field'],
-						"propOptions" => $prop_options
+						"propOptions" => !empty($option_config['options']) ? $option_config['options']() : [],
+						"remoteOptions" => $option_config['remoteOptions'] ?? []
 					];
-
-					$conditions[$option_config['field']] = array_column($prop_options, 'value');
 				}
 			}
 
@@ -252,5 +279,48 @@ class PermissionService extends BaseService
 		return collect($scope_options)->filter(function ($item) use ($scope_limit) {
 			return $item['value'] <= $scope_limit;
 		})->values()->toArray();
+	}
+
+
+	public function tidyPermissionTreeViaPermissions($menus, $user_permissions, $all_permissions): array
+	{
+		foreach ($menus as $index => $menu) {
+			if (isset($menu['children'])) {
+
+				$sub_menus = $this->tidyPermissionTreeViaPermissions($menu['children'], $user_permissions, $all_permissions);
+
+				if (count($sub_menus)) {
+					$menus[$index]['children'] = array_values($sub_menus);
+					if (!isset($menus[$index]['key'])) {
+						$menus[$index]['key'] = $menus[$index]['page'];
+					}
+				} else {
+					unset($menus[$index]);
+				}
+			} else if (!isset($menu['page'])) {
+				//如果没有 children 也没有 page， 那就直接跳过
+				unset($menus[$index]);
+			} else {
+				//如果是 Page，那么就需要判断最大权限集中是否有该页面的权限，没有权限直接从 Menu 中移除
+				if (!$user_permissions->contains($menu['page'])) {
+					unset($menus[$index]);
+				} else {
+					$available_actions = $this->findPageActions($all_permissions, $menu['page']);
+					if ($available_actions) {
+						foreach ($available_actions as $action => $name) {
+							if ($user_permissions->contains($action)) {
+								$menu['children'][] = [
+									'displayName' => $name,
+									'key' => $action,
+								];
+							}
+						}
+					}
+					$menu['key'] = $menu['page'];
+					$menus[$index] = $menu;
+				}
+			}
+		}
+		return $menus;
 	}
 }

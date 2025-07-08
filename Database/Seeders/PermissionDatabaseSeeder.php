@@ -29,7 +29,7 @@ class PermissionDatabaseSeeder extends Seeder
 
 		$user = User::where('name', config('conf.super_admin_name', 'root'))->first();
 		if (!$user) {
-			$user = User::create(['name' => 'root', 'is_active' => 1]);
+			$user = User::create(['name' => config('conf.super_admin_name', 'root'), 'is_active' => 1]);
 		}
 
 		$user->assignRole($role_super_admin);

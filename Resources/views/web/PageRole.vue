@@ -25,7 +25,12 @@
 			@success="onSubmitRole"
 		/>
 	</NewbieModal>
-	<PermissionAuthorization mode="role" :info="state.info" ref="permissionAuthorizationRef"></PermissionAuthorization>
+	<PermissionAuthorization
+		:title="`${state.info.name} - 权限管理`"
+		mode="role"
+		:info="state.info"
+		ref="permissionAuthorizationRef"
+	></PermissionAuthorization>
 </template>
 
 <script setup>

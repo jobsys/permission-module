@@ -10,6 +10,19 @@ class Role extends \Spatie\Permission\Models\Role
 {
 	use HasDataScopes, LogsActivity;
 
+	protected string $model_name = "角色";
+
+	protected static function booted(): void
+	{
+		static::created(function (Role $role) {
+			$role->initDataScope();
+			$dashboard_permission = Permission::where('name', 'page.manager.dashboard')->first();
+			if ($dashboard_permission) {
+				$role->givePermissionTo($dashboard_permission);
+			}
+		});
+	}
+
 	protected $guarded = [];
 
 	protected $casts = [
@@ -24,6 +37,11 @@ class Role extends \Spatie\Permission\Models\Role
 	public function getModelTypeAttribute(): string
 	{
 		return 'role';
+	}
+
+	public static function getModelName(): string
+	{
+		return (new static)->model_name;
 	}
 
 	public function getActivitylogOptions(): LogOptions

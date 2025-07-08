@@ -85,12 +85,12 @@ class RoleController extends BaseManagerController
 		return $this->json();
 	}
 
-	public function permissionItems(Request $request)
+	public function permissionItems(PermissionService $service)
 	{
 
 		// 有两种模式，分别是针对角色和用户
-		$mode = $request->input('mode', 'role');
-		$id = $request->input('id');
+		$mode = request('mode', 'role');
+		$id = request('id');
 
 		if ($mode === 'role') {
 			$role = Role::find($id);
@@ -108,15 +108,15 @@ class RoleController extends BaseManagerController
 
 
 		//最大权限集为当前登录用户的所有权限
-		if ($this->login_user->hasRole(config('conf.role_super'))) {
+		if (auth()->user()->hasRole(config('conf.role_super'))) {
 			$permissions = Permission::orderBy('sort_order', 'DESC')->get()->pluck('name');
 		} else {
 			//如果有自定义权限，那么就按照自定义权限来
-			if ($this->login_user->permissions->count()) {
-				$permissions = $this->login_user->permissions()->pluck('name');
+			if (auth()->user()->permissions->count()) {
+				$permissions = auth()->user()->permissions()->pluck('name');
 			} else {
 				//如果没有自定义权限，那么就按照角色的权限来
-				$permissions = $this->login_user->getAllPermissions()->pluck('name');
+				$permissions = auth()->user()->getAllPermissions()->pluck('name');
 			}
 		}
 
@@ -133,63 +133,7 @@ class RoleController extends BaseManagerController
 		//拿出所有的权限项
 		$all_permissions = BootPermission::permissions();
 
-
-		foreach ($menus as $index => &$menu) {
-			if (isset($menu['children'])) {
-				foreach ($menu['children'] as $sub_index => &$sub_menu) {
-					if (!$permissions->contains($sub_menu['page'])) {
-						unset($menus[$index]['children'][$sub_index]);
-					} else {
-						$sub_menu['key'] = $sub_menu['page'];
-						$sub_menu['children'] = [];
-						//处理 Action
-						$available_actions = $all_permissions[$sub_menu['page']]['children'] ?? [];
-
-
-						foreach ($available_actions as $action => $name) {
-							if ($permissions->contains($action)) {
-								$sub_menu['children'][] = [
-									'displayName' => $name,
-									'key' => $action,
-								];
-							}
-						}
-
-						//如果一个 Action 都没有了，那么就直接移除这个 Page
-						if (empty($menus[$index]['children'][$sub_index]['children'])) {
-							unset($menus[$index]['children'][$sub_index]);
-						}
-					}
-					$menu['children'] = array_values($menu['children']);
-				}
-				//如果一个 child 都没有了，那么就直接移除这个 Folder
-				if (empty($menus[$index]['children'])) {
-					unset($menus[$index]);
-				}
-			} else if (!isset($menu['page'])) {
-				//如果没有 children 也没有 page， 那就直接跳过
-				unset($menus[$index]);
-			} else {
-				//如果是 Page，那么就需要判断最大权限集中是否有该页面的权限，没有权限直接从 Menu 中移除
-				if (!$permissions->contains($menu['page'])) {
-					unset($menus[$index]);
-				} else {
-
-					$available_actions = $all_permissions[$menu['page']]['children'] ?? [];
-
-					foreach ($available_actions as $action => $name) {
-						if ($permissions->contains($action)) {
-							$menu['children'][] = [
-								'displayName' => $name,
-								'key' => $action,
-							];
-						}
-					}
-
-					$menu['key'] = $menu['page'];
-				}
-			}
-		}
+		$menus = $service->tidyPermissionTreeViaPermissions($menus, $permissions, $all_permissions);
 
 		$menus = array_values($menus);
 
@@ -208,13 +152,28 @@ class RoleController extends BaseManagerController
 			$auth_permissions = $role->permissions->pluck('name');
 		}
 
-		//移动一下 Page 权限，因为前端的树形插件如果选择了 Page， 则 Action 会自动选中，所以如果有 Action 的 Page 则由前端自动选中
-		$auth_permissions = array_values($auth_permissions->filter(function (string $item) use ($all_permissions) {
-			if (isset($all_permissions[$item]['children']) && !empty($all_permissions[$item]['children'])) {
-				return false;
+		$auth_permissions = $auth_permissions->toArray();
+
+		$tree_permissions = [];
+
+		/**
+		 * 这里是拿出用户给了哪些权限，保存权限的时候如果是给了某个页面的某个操作权限，那么就需要把这个页面也添加到权限集中
+		 * 但如果把页面的权限返回给前端的权限树，那么该树下的所有操作权限都会被选中，
+		 * 所以这里需要进行过滤，只有当前页面的所有操作权限都被选中时，才将该页面添加到权限集中
+		 */
+		foreach ($auth_permissions as $permission) {
+			$permission_actions = $service->findPageActions($all_permissions, $permission);
+			if (!$permission_actions) {
+				$tree_permissions[] = $permission;
+				continue;
 			}
-			return true;
-		})->toArray());
+			if (count(array_intersect(array_keys($permission_actions), $auth_permissions)) === count($permission_actions)) {
+				$tree_permissions[] = $permission;
+			}
+		}
+
+		//如果没有任何权限，那么就默认给 dashboard 权限
+		$auth_permissions = empty($tree_permissions) ? ['page.manager.dashboard'] : $tree_permissions;
 
 		log_access('获取角色/用户权限信息', $role ?? $user);
 
@@ -273,7 +232,7 @@ class RoleController extends BaseManagerController
 		$id = $request->input('id');
 
 		if ($mode === 'role') {
-			$role = Role::find($id);
+			$role = Role::with(['dataScopes'])->find($id);
 
 			if (!$role) {
 				return $this->message('角色信息不存在');
@@ -294,7 +253,7 @@ class RoleController extends BaseManagerController
 
 		if ($mode === 'role' && isset($role)) {
 			//当前角色的数据权限
-			$existing_scope = $role->dataScopes()->first()->scope;
+			$existing_scope = $role->dataScopes()->first()?->scope ?? [];
 		} else if ($mode === 'user' && isset($user)) {
 			//当前用户的数据权限
 			$existing_scope = $user->dataScopes()->first()?->scope ?? [];
@@ -302,7 +261,7 @@ class RoleController extends BaseManagerController
 
 
 		//以当前角色的数据权限为上限准备可选项
-		if ($this->login_user->hasRole(config('conf.role_super'))) {
+		if (auth()->user()->hasRole(config('conf.role_super'))) {
 			$scopes = $total_resources->map(function ($item) use ($service) {
 				$item['options'] = $service->getScopeOptionsViaConfig($item, Scope::ALL->value);
 				return $item;
