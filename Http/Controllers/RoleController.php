@@ -11,7 +11,7 @@ use Inertia\Inertia;
 use Modules\Permission\Entities\Role;
 use Modules\Permission\Enums\Scope;
 use Modules\Permission\Services\PermissionService;
-use Modules\Starter\Emnus\State;
+use Modules\Starter\Enums\State;
 use Spatie\Permission\Models\Permission;
 
 class RoleController extends BaseManagerController
